@@ -39,5 +39,3 @@ Controlar el panel DOLANG desde el ATmega328P con **secuencias dinámicas** y **
 - Joaquin Utmazian  
 
 ---
-
-## 📂 Estructura del Repositorio
