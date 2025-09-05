@@ -1,209 +1,538 @@
 .include "m328pdef.inc"
-
 .org 0x00
-    rjmp inicio
 
-; ---------------------------
-; Carita feliz - patrón 8x8
-; Cada byte representa una fila (de arriba a abajo)
-; Bit 0 = columna 1 (izquierda), bit 7 = columna 8 (derecha)
-; ---------------------------
-carita:
-    .db 0b00111100
-    .db 0b01000010
-    .db 0b10100101
-    .db 0b10000001
-    .db 0b10100101
-    .db 0b10011001
-    .db 0b01000010
-    .db 0b00111100
+;Ajuste del Stack Pointer
+ldi r16, HIGH(RAMEND)
+out SPH, r16
+ldi r16, LOW(RAMEND)
+out SPL, r16
 
-; ---------------------------
-; Configuración de puertos
-; ---------------------------
-inicio:
-    ; Configurar columnas (Y1–Y8) como salida
-    sbi DDRB, 1 ; D9  = Y1
-    sbi DDRB, 2 ; D10 = Y2
-    sbi DDRB, 3 ; D11 = Y3
-    sbi DDRB, 4 ; D12 = Y4
-    sbi DDRB, 5 ; D13 = Y5
-    sbi DDRC, 0 ; A0  = Y6
-    sbi DDRC, 1 ; A1  = Y7
-    sbi DDRC, 2 ; A2  = Y8
+;Configuración del temporizador
+ldi r16, 0x00
+sts TCCR1A, r16
+ldi r16, (1<<CS12)|(1<<CS10)
+sts TCCR1B, r16
+ldi r16, 0
+sts TCCR1C, r16
+ldi r16, 0
+sts TIMSK1, r16
 
-    ; Configurar filas (X1–X8) como salida
-    sbi DDRD, 5 ; D5  = X1
-    sbi DDRD, 2 ; D2  = X2
-    sbi DDRD, 3 ; D3  = X3
-    sbi DDRD, 4 ; D4  = X4
-    sbi DDRD, 6 ; D6  = X5
-    sbi DDRD, 7 ; D7  = X6
-    sbi DDRC, 3 ; A3  = X7
-    sbi DDRB, 0 ; D8  = X8
+;Inicialización del contador
+ldi r16, HIGH(65500)
+sts TCNT1H, r16
+ldi r16, LOW(65500)
+sts TCNT1L, r16
 
-; ---------------------------
-; Bucle principal
-; ---------------------------
-loop_principal:
-    ldi r16, 0 ; índice de columna
+;Configurar PB5 como salida
+sbi DDRD, PD2
+sbi DDRD, PD3 
+sbi DDRD, PD4 
+sbi DDRD, PD5 
+sbi DDRD, PD6 
+sbi DDRD, PD7 
+sbi DDRB, PB0 
+sbi DDRB, PB1 
 
-bucle_matriz:
-    ; Cargar dirección del patrón en Z
-    ldi ZH, high(carita << 1)
-    ldi ZL, low(carita << 1)
-    add ZL, r16 ; avanzar al byte de fila correspondiente
+sbi DDRB, PB2
+sbi DDRB, PB3
+sbi DDRB, PB4 
 
-    lpm r17, Z ; leer byte desde flash a r17
+;Inicializar los pines en 1 
+sbi PORTD, PD2
+sbi PORTD, PD3
+sbi PORTD, PD4
+sbi PORTD, PD5
+sbi PORTD, PD6
+sbi PORTD, PD7
+sbi PORTB, PB0
+sbi PORTB, PB1
 
-    rcall mostrar_fila
-    rcall activar_columna
-    rcall retardo
+sbi PORTB, PB2
+sbi PORTB, PB3
+sbi PORTB, PB4
 
-    inc r16
-    cpi r16, 8
-    brne bucle_matriz
+Bucle:
+	Bucle:
+    rcall CaritaFeliz
+    rcall CaritaTriste
+    rcall Corazon
+    rcall Rombo
+    rcall Alien
+	rjmp Bucle
 
-    rjmp loop_principal
+CaritaFeliz:
+	cbi PORTD, PB4
+	cbi PORTD, PB5
+	cbi PORTD, PB6
+	cbi PORTD, PB7
 
-; ---------------------------
-; Mostrar patrón en las filas
-; ---------------------------
-mostrar_fila:
-    ; Apagar todas las filas (poner en HIGH)
-    sbi PORTD, 2
-    sbi PORTD, 3
-    sbi PORTD, 4
-    sbi PORTD, 5
-    sbi PORTD, 6
-    sbi PORTD, 7
-    sbi PORTB, 0
-    sbi PORTC, 3
+	rcall Retardo
+	rcall Reset
 
-    ldi r18, 0 ; índice de bit/fila
+	cbi PORTB, PB2
 
-siguiente_fila:
-    bst r17, 0 ; copiar bit 0 de r17 a T flag
-    brts ignorar ; si es 1, no hacer nada (LED apagado)
+	cbi PORTD, PD3
+	cbi PORTB, PB0
 
-    ; Si el bit es 0, activar la fila (poner LOW correspondiente)
-    ldi r19, 0
-    cp r18, r19
-    breq fx1
-    ldi r19, 1
-    cp r18, r19
-    breq fx2
-    ldi r19, 2
-    cp r18, r19
-    breq fx3
-    ldi r19, 3
-    cp r18, r19
-    breq fx4
-    ldi r19, 4
-    cp r18, r19
-    breq fx5
-    ldi r19, 5
-    cp r18, r19
-    breq fx6
-    ldi r19, 6
-    cp r18, r19
-    breq fx7
-    ldi r19, 7
-    cp r18, r19
-    breq fx8
-    rjmp continuar
+	rcall Retardo
+	rcall Reset
 
-fx1: cbi PORTD, 5 ; X1
-     rjmp continuar
-fx2: cbi PORTD, 2 ; X2
-     rjmp continuar
-fx3: cbi PORTD, 3 ; X3
-     rjmp continuar
-fx4: cbi PORTD, 4 ; X4
-     rjmp continuar
-fx5: cbi PORTD, 6 ; X5
-     rjmp continuar
-fx6: cbi PORTD, 7 ; X6
-     rjmp continuar
-fx7: cbi PORTC, 3 ; X7
-     rjmp continuar
-fx8: cbi PORTB, 0 ; X8
-     rjmp continuar
+	cbi PORTB, PB3
 
-ignorar:
-continuar:
-    lsr r17       ; correr r17 una posición a la derecha
-    inc r18
-    cpi r18, 8
-    brne siguiente_fila
+	cbi PORTD, PD2
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+
+	cbi PORTD, PD2
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTB, PB1
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+
+	cbi PORTD, PD3
+	cbi PORTB, PB0
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+
+	ret
+
+CaritaTriste:
+	cbi PORTD, PB4
+	cbi PORTD, PB5
+	cbi PORTD, PB6
+	cbi PORTD, PB7
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB2
+
+	cbi PORTD, PD3
+	cbi PORTB, PB0
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB3
+
+	cbi PORTD, PD2
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+
+	cbi PORTD, PD2
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTB, PB1
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+
+	cbi PORTD, PD3
+	cbi PORTB, PB0
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+	ret
+
+Corazon:
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB2
+
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB3
+
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+	ret
+
+Rombo:
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB2
+
+
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB3
+
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB2
+
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+
+	rcall Retardo
+	rcall Reset
+	ret
+
+Alien:
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB2
+
+
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+	cbi PORTD, PD2
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+
+	cbi PORTB, PB3
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+
+	cbi PORTD, PD2
+	cbi PORTD, PD3
+	
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTB, PB0
+	cbi PORTB, PB1
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB2
+
+	cbi PORTD, PD4
+	cbi PORTD, PD5
+	cbi PORTD, PD6
+	cbi PORTD, PD7
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+
+	rcall Retardo
+	rcall Reset
+	
+	cbi PORTB, PB4
+	cbi PORTB, PB3
+	cbi PORTB, PB2
+
+	cbi PORTD, PD4
+	cbi PORTD, PD7
+
+	rcall Retardo
+	rcall Reset
+	
+	ret
+
+Retardo:
+    sbis TIFR1, TOV1
+    rjmp Retardo
+
+    ldi r16, (1<<TOV1)  
+    out TIFR1, r16   
+
+    ldi r16, HIGH(65500)
+    sts TCNT1H, r16
+    ldi r16, LOW(65500)
+    sts TCNT1L, r16
+
     ret
 
-; ---------------------------
-; Activar columna actual
-; ---------------------------
-activar_columna:
-    ; Apagar todas las columnas (LOW = OFF)
-    cbi PORTB, 1
-    cbi PORTB, 2
-    cbi PORTB, 3
-    cbi PORTB, 4
-    cbi PORTB, 5
-    cbi PORTC, 0
-    cbi PORTC, 1
-    cbi PORTC, 2
+Reset:
+	;Inicializar los pines en 1 
+	sbi PORTD, PD2
+	sbi PORTD, PD3
+	sbi PORTD, PD4
+	sbi PORTD, PD5
+	sbi PORTD, PD6
+	sbi PORTD, PD7
+	sbi PORTB, PB0
+	sbi PORTB, PB1
 
-    ; Activar columna correspondiente (HIGH = ON)
-    ldi r30, 0
-    cp r16, r30
-    breq col0
-    ldi r30, 1
-    cp r16, r30
-    breq col1
-    ldi r30, 2
-    cp r16, r30
-    breq col2
-    ldi r30, 3
-    cp r16, r30
-    breq col3
-    ldi r30, 4
-    cp r16, r30
-    breq col4
-    ldi r30, 5
-    cp r16, r30
-    breq col5
-    ldi r30, 6
-    cp r16, r30
-    breq col6
-    ldi r30, 7
-    cp r16, r30
-    breq col7
-    ret
-
-col0: sbi PORTB, 1 ; Y1
-      ret
-col1: sbi PORTB, 2 ; Y2
-      ret
-col2: sbi PORTB, 3 ; Y3
-      ret
-col3: sbi PORTB, 4 ; Y4
-      ret
-col4: sbi PORTB, 5 ; Y5
-      ret
-col5: sbi PORTC, 0 ; Y6
-      ret
-col6: sbi PORTC, 1 ; Y7
-      ret
-col7: sbi PORTC, 2 ; Y8
-      ret
-
-; ---------------------------
-; Retardo simple
-; ---------------------------
-retardo:
-    ldi r20, 50
-r1: ldi r21, 255
-r2: dec r21
-    brne r2
-    dec r20
-    brne r1
-    ret
+	sbi PORTB, PB2
+	sbi PORTB, PB3
+	sbi PORTB, PB4
+	ret
